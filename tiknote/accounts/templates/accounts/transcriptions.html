@@ -1,0 +1,331 @@
+{% extends "base.html" %} {% load static %} {% block content %}
+<div class="min-h-screen bg-gray-50 py-10 px-4">
+  <div class="max-w-6xl mx-auto">
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for message in messages %}
+      <div
+        class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200{% elif message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200{% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+      >
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+        📝 My Transcriptions
+      </h1>
+      <a
+        href="{% url 'accounts:sync_videos_page' %}"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+      >
+        + Add More Videos
+      </a>
+    </div>
+
+    <!-- Status Tabs -->
+    <div
+      class="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-6 flex gap-2"
+    >
+      <button
+        onclick="showTab('all')"
+        id="tab-all"
+        class="tab-button active px-4 py-2 rounded-lg"
+      >
+        All ({{ transcriptions.count }})
+      </button>
+      <button
+        onclick="showTab('pending')"
+        id="tab-pending"
+        class="tab-button px-4 py-2 rounded-lg"
+      >
+        ⏳ Pending ({{ pending_count }})
+      </button>
+      <button
+        onclick="showTab('completed')"
+        id="tab-completed"
+        class="tab-button px-4 py-2 rounded-lg"
+      >
+        ✅ Completed ({{ completed_count }})
+      </button>
+      {% if failed_count > 0 %}
+      <button
+        onclick="showTab('failed')"
+        id="tab-failed"
+        class="tab-button px-4 py-2 rounded-lg"
+      >
+        ❌ Failed ({{ failed_count }})
+      </button>
+      {% endif %}
+    </div>
+
+    <!-- Transcriptions List -->
+    {% if transcriptions %}
+
+    <!-- All Transcriptions -->
+    <div id="content-all" class="tab-content space-y-4">
+      {% for t in transcriptions %}
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition"
+      >
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+              {% if t.thumbnail_url %}
+              <img
+                src="{{ t.thumbnail_url }}"
+                alt="Thumbnail"
+                class="w-20 h-20 object-cover rounded-lg"
+              />
+              {% endif %}
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  {{ t.title|default:"Untitled Video" }}
+                </h3>
+                <p class="text-sm text-gray-500">
+                  {{ t.created_at|date:"M d, Y - g:i A" }}
+                </p>
+              </div>
+            </div>
+
+            {% if t.status == 'completed' %}
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+              <p class="text-gray-700 whitespace-pre-line">
+                {{ t.transcript|truncatewords:50 }}
+              </p>
+              <button
+                onclick="showFullTranscript('{{ t.id }}')"
+                class="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Read more →
+              </button>
+            </div>
+            {% elif t.status == 'pending' %}
+            <div class="mt-4 flex items-center gap-2 text-yellow-600">
+              <svg
+                class="animate-spin h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span class="text-sm font-medium"
+                >Transcription in progress...</span
+              >
+            </div>
+            {% else %}
+            <div class="mt-4 p-3 bg-red-50 rounded-lg text-red-700 text-sm">
+              ❌ Transcription failed. Please try again.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span
+              class="px-3 py-1 rounded-full text-xs font-medium {% if t.status == 'completed' %}bg-green-100 text-green-800 {% elif t.status == 'pending' %}bg-yellow-100 text-yellow-800 {% else %}bg-red-100 text-red-800{% endif %}"
+            >
+              {{ t.get_status_display }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pending Only -->
+    <div id="content-pending" class="tab-content hidden space-y-4">
+      {% for t in pending %}
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center gap-3">
+          {% if t.thumbnail_url %}
+          <img
+            src="{{ t.thumbnail_url }}"
+            alt="Thumbnail"
+            class="w-16 h-16 object-cover rounded-lg"
+          />
+          {% endif %}
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">
+              {{ t.title|default:"Untitled Video" }}
+            </h3>
+            <p class="text-sm text-gray-500">
+              {{ t.created_at|timesince }} ago
+            </p>
+          </div>
+          <svg
+            class="animate-spin h-6 w-6 text-yellow-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-center text-gray-500 py-10">No pending transcriptions</p>
+      {% endfor %}
+    </div>
+
+    <!-- Completed Only -->
+    <div id="content-completed" class="tab-content hidden space-y-4">
+      {% for t in completed %}
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-start gap-3">
+          {% if t.thumbnail_url %}
+          <img
+            src="{{ t.thumbnail_url }}"
+            alt="Thumbnail"
+            class="w-20 h-20 object-cover rounded-lg"
+          />
+          {% endif %}
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900">
+              {{ t.title|default:"Untitled Video" }}
+            </h3>
+            <p class="text-sm text-gray-500 mb-3">
+              {{ t.completed_at|date:"M d, Y - g:i A" }}
+            </p>
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <p class="text-gray-700">{{ t.transcript|truncatewords:50 }}</p>
+              <button
+                onclick="showFullTranscript('{{ t.id }}')"
+                class="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Read full transcript →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-center text-gray-500 py-10">
+        No completed transcriptions yet
+      </p>
+      {% endfor %}
+    </div>
+
+    <!-- Failed Only -->
+    <div id="content-failed" class="tab-content hidden space-y-4">
+      {% for t in failed %}
+      <div class="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+        <div class="flex items-center gap-3">
+          {% if t.thumbnail_url %}
+          <img
+            src="{{ t.thumbnail_url }}"
+            alt="Thumbnail"
+            class="w-16 h-16 object-cover rounded-lg"
+          />
+          {% endif %}
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">
+              {{ t.title|default:"Untitled Video" }}
+            </h3>
+            <p class="text-sm text-red-600">Failed to transcribe</p>
+          </div>
+          <button
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-center text-gray-500 py-10">No failed transcriptions</p>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-20">
+      <div class="text-6xl mb-4">📝</div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">
+        No transcriptions yet
+      </h2>
+      <p class="text-gray-500 mb-6">Start by syncing some videos from TikTok</p>
+      <a
+        href="{% url 'accounts:sync_videos_page' %}"
+        class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+      >
+        Sync TikTok Videos
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  function showTab(tab) {
+    // Hide all content
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    // Remove active from all tabs
+    document.querySelectorAll('.tab-button').forEach(el => {
+      el.classList.remove('active', 'bg-blue-100', 'text-blue-700');
+      el.classList.add('text-gray-600');
+    });
+
+    // Show selected content
+    document.getElementById('content-' + tab).classList.remove('hidden');
+    // Mark tab as active
+    const activeTab = document.getElementById('tab-' + tab);
+    activeTab.classList.add('active', 'bg-blue-100', 'text-blue-700');
+    activeTab.classList.remove('text-gray-600');
+  }
+
+  function showFullTranscript(transcriptId) {
+    // You can implement a modal or redirect to a detail page
+    alert('Show full transcript for ID: ' + transcriptId);
+    // Or redirect: window.location.href = '/transcripts/' + transcriptId + '/';
+  }
+
+  // Auto-refresh pending transcriptions every 10 seconds
+  {% if pending_count > 0 %}
+  setInterval(() => {
+    location.reload();
+  }, 10000);
+  {% endif %}
+</script>
+
+<style>
+  .tab-button {
+    transition: all 0.2s;
+  }
+  .tab-button:hover {
+    background-color: #f3f4f6;
+  }
+  .tab-button.active {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
