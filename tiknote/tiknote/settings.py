@@ -376,11 +376,22 @@
 
 
 
+# 
+
+
+
+
+
+
+
+
+
 """
 Django settings for tiknote project.
 """
 
 import os
+import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -398,11 +409,7 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    "alexis-untrailered-soakingly.ngrok-free.dev",
-]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 # =============================================================================
 # APPLICATIONS
@@ -431,6 +438,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -461,12 +469,19 @@ TEMPLATES = [
 # DATABASE
 # =============================================================================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -510,27 +525,27 @@ if DEBUG:
     SESSION_COOKIE_DOMAIN = None
 else:
     CSRF_COOKIE_SECURE = True
-    CSRF_TRUSTED_ORIGINS = [
-        "https://alexis-untrailered-soakingly.ngrok-free.dev",
-    ]
+    CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_NAME = "sessionid"
-SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_COOKIE_AGE = 1209600
 SESSION_COOKIE_HTTPONLY = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
 
 # =============================================================================
-# CACHE
+# CACHE & REDIS
 # =============================================================================
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
 
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -541,8 +556,8 @@ CACHES = {
 # CELERY
 # =============================================================================
 
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
@@ -554,10 +569,11 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Africa/Lagos'
 
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60       # 30 minutes hard limit
-CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_POOL = 'solo'
 
 CELERY_RESULT_EXTENDED = True
 CELERY_RESULT_BACKEND_ALWAYS_RETRY = True
@@ -585,6 +601,9 @@ USE_TZ = True
 # =============================================================================
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
 
@@ -596,25 +615,28 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'app.log',
-        },
         'console': {
-            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
         },
     },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['console'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'transcripts': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },
