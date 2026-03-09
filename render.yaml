@@ -1,0 +1,74 @@
+services:
+  # Django Web Service
+  - type: web
+    name: tiknote-web
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn tiknote.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: tiknote.settings
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tiknote-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: tiknote-redis
+          property: connectionString
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_REDIRECT_URI
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  # Celery Worker Service
+  - type: worker
+    name: tiknote-worker
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A tiknote worker --loglevel=info --pool=solo --concurrency=1"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: tiknote-web
+          envVarKey: DJANGO_SECRET_KEY
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tiknote-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: tiknote-redis
+          property: connectionString
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  # Redis
+  - type: redis
+    name: tiknote-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+
+databases:
+  # PostgreSQL
+  - name: tiknote-db
+    plan: free
