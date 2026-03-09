@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TikTok Login Success</title>
+  </head>
+  <body>
+    <h2>Welcome, {{ user_info.username }}</h2>
+    <img
+      src="{{ user_info.avatar_url }}"
+      width="100"
+      height="100"
+      alt="Avatar"
+    />
+    <p>Your TikTok Open ID: {{ user_info.open_id }}</p>
+    <p>Login successful via TikTok!</p>
+  </body>
+</html>
