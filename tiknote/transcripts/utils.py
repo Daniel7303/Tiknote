@@ -31,39 +31,61 @@
 import requests
 import logging
 import os
+import time
 
 logger = logging.getLogger(__name__)
 
 def transcribe_video(video_path: str) -> tuple[str, str]:
     api_key = os.getenv("ASSEMBLYAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("ASSEMBLYAI_API_KEY environment variable not set")
+
     headers = {"authorization": api_key}
 
-    # Upload file
-    with open(video_path, "rb") as f:
-        upload_response = requests.post(
-            "https://api.assemblyai.com/v2/upload",
+    try:
+        logger.info(f"Uploading video to AssemblyAI: {video_path}")
+        with open(video_path, "rb") as f:
+            upload_response = requests.post(
+                "https://api.assemblyai.com/v2/upload",
+                headers=headers,
+                data=f,
+                timeout=120
+            )
+        logger.info(f"Upload response: {upload_response.status_code} - {upload_response.text}")
+        upload_response.raise_for_status()
+        upload_url = upload_response.json()["upload_url"]
+
+        # Request transcription
+        transcript_response = requests.post(
+            "https://api.assemblyai.com/v2/transcript",
             headers=headers,
-            data=f
+            json={"audio_url": upload_url, "language_detection": True},
+            timeout=30
         )
-    upload_url = upload_response.json()["upload_url"]
+        logger.info(f"Transcript response: {transcript_response.status_code} - {transcript_response.text}")
+        transcript_response.raise_for_status()
+        transcript_id = transcript_response.json()["id"]
 
-    # Request transcription
-    transcript_response = requests.post(
-        "https://api.assemblyai.com/v2/transcript",
-        headers=headers,
-        json={"audio_url": upload_url}
-    )
-    transcript_id = transcript_response.json()["id"]
+        # Poll for completion
+        while True:
+            result = requests.get(
+                f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
+                headers=headers,
+                timeout=30
+            ).json()
 
-    # Poll for completion
-    import time
-    while True:
-        result = requests.get(
-            f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
-            headers=headers
-        ).json()
-        if result["status"] == "completed":
-            return result["text"], result.get("language_code", "en")
-        elif result["status"] == "error":
-            raise RuntimeError(f"Transcription failed: {result['error']}")
-        time.sleep(3)
+            if result["status"] == "completed":
+                text = result.get("text", "").strip()
+                language = result.get("language_code", "en")
+                logger.info(f"Transcription completed. Language: {language}")
+                return text, language
+
+            elif result["status"] == "error":
+                raise RuntimeError(f"AssemblyAI error: {result['error']}")
+
+            logger.info(f"Transcription status: {result['status']}, waiting...")
+            time.sleep(3)
+
+    except Exception as e:
+        logger.error(f"Transcription failed: {e}")
+        raise RuntimeError(f"Transcription failed: {e}")
