@@ -579,6 +579,11 @@ CELERY_RESULT_EXTENDED = True
 CELERY_RESULT_BACKEND_ALWAYS_RETRY = True
 CELERY_RESULT_BACKEND_MAX_RETRIES = 10
 
+
+# Allow override from environment
+if os.getenv("CELERY_TASK_ALWAYS_EAGER") == "True":
+    CELERY_TASK_ALWAYS_EAGER = True
+
 # =============================================================================
 # RATE LIMITING
 # =============================================================================
