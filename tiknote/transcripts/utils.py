@@ -1,4 +1,3 @@
-import whisper
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,6 +8,7 @@ def transcribe_video(video_path: str) -> tuple[str, str]:
     Returns a tuple: (transcript_text, detected_language)
     """
     try:
+        import whisper
         logger.info(f" Starting Whisper transcription for {video_path}")
         model = whisper.load_model("base")  # You can use "small" or "medium" for better accuracy
 
