@@ -62,7 +62,7 @@ def transcribe_video(video_path: str) -> tuple[str, str]:
             json={
                 "audio_url": upload_url,
                 "language_detection": True,
-                "speech_models": "universal-2"
+                "speech_models": ["universal-3-pro"]
             },
             timeout=30
         )
