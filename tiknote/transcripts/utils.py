@@ -59,7 +59,11 @@ def transcribe_video(video_path: str) -> tuple[str, str]:
         transcript_response = requests.post(
             "https://api.assemblyai.com/v2/transcript",
             headers=headers,
-            json={"audio_url": upload_url, "language_detection": True},
+            json={
+                "audio_url": upload_url,
+                "language_detection": True,
+                "speech_model": "universal-2"
+            },
             timeout=30
         )
         logger.info(f"Transcript response: {transcript_response.status_code} - {transcript_response.text}")
