@@ -14,7 +14,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     display_name = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
-    profile_image = models.URLField(blank=True, null=True)
+    profile_image = models.URLField(max_length=500, blank=True, null=True)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     tiktok_user_id = models.CharField(max_length=255, blank=True, null=True)
     access_token = models.TextField(blank=True, null=True)
