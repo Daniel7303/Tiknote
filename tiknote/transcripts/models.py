@@ -10,8 +10,8 @@ class Video(models.Model):
     video_id = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255, blank=True)
     caption = models.TextField(blank=True)
-    share_url = models.URLField(blank=True)
-    cover_image = models.URLField(blank=True)
+    share_url = models.URLField(max_length=500, blank=True)
+    cover_image = models.URLField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_transcribed = models.BooleanField(default=False)
 
@@ -45,7 +45,7 @@ class Transcription(models.Model):
     slug = models.SlugField(null=True, blank=True)
 
     # Keep the thumbnail for visual context (optional)
-    thumbnail_url = models.URLField(blank=True, null=True)
+    thumbnail_url = models.URLField(max_length=500, blank=True, null=True)
     
     # Temporary video path (gets deleted after transcription)
     temp_video_path = models.CharField(max_length=255, blank=True, null=True)
