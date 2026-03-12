@@ -17,6 +17,7 @@ class UserProfile(models.Model):
     profile_image = models.URLField(max_length=500, blank=True, null=True)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     tiktok_user_id = models.CharField(max_length=255, blank=True, null=True)
+    union_id = models.CharField(max_length=255, blank=True, null=True)
     access_token = models.TextField(blank=True, null=True)
     refresh_token= models.TextField(blank=True, null=True)
     token_expires_at = models.DateTimeField(blank=True, null=True)
